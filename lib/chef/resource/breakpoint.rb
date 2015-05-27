@@ -24,11 +24,12 @@ class Chef
     class Breakpoint < Chef::Resource
       provides :breakpoint
 
+      default_action :break
+
       def initialize(action="break", *args)
         super(caller.first, *args)
-        @action = "break"
-        @allowed_actions << :break
       end
+
     end
   end
 end
