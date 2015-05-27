@@ -138,10 +138,8 @@ describe Chef::Resource::Execute do
   end
 
   it "times out when a timeout is set on the resource" do
-    Timeout::timeout(5) do
-      resource.command %{ruby -e 'sleep 600'}
-      resource.timeout 0.1
-      expect { resource.run_action(:run) }.to raise_error(Mixlib::ShellOut::CommandTimeout)
-    end
+    resource.command %{ruby -e 'sleep 60'}
+    resource.timeout 0.1
+    expect { resource.run_action(:run) }.to raise_error(Mixlib::ShellOut::CommandTimeout)
   end
 end
