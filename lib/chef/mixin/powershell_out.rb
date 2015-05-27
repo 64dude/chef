@@ -60,10 +60,12 @@ class Chef
 
         if disable_redirection
           original_redirection_state = disable_wow64_file_redirection(node)
-          ret = block.call
+        end
+
+        ret = block.call
+
+        if disable_redirection
           restore_wow64_file_redirection(node, original_redirection_state)
-        else
-          ret = block.call
         end
 
         ret
@@ -85,8 +87,7 @@ class Chef
           "-InputFormat None"
         ]
 
-        command = "powershell.exe #{flags.join(' ')} -Command \"#{script}\""
-        command
+        "powershell.exe #{flags.join(' ')} -Command \"#{script}\""
       end
     end
   end
