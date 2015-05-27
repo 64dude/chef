@@ -26,7 +26,7 @@ class Chef
         script = command_args.first
         options = command_args.last.is_a?(Hash) ? command_args.last : nil
 
-        run_command(script, options)
+        run_command_with_wow64(script, options)
       end
 
       def powershell_out!(*command_args)
@@ -36,36 +36,40 @@ class Chef
       end
 
       private
-      def run_command(script, options)
+
+      def run_command_with_wow64(script, options = nil)
+        architecture = node_windows_architecture(node)
+
         if options && options[:architecture]
           architecture = options[:architecture]
           options.delete(:architecture)
-        else
-          architecture = node_windows_architecture(node)
         end
 
+        command = build_powershell_command(script)
+
+        with_disabled_wow64_redirection(architecture) do
+          cmd = shell_out(
+            build_powershell_command(script),
+            options
+          )
+        end
+      end
+
+      def with_disabled_wow64_redirection(architecture, &block)
         disable_redirection = wow64_architecture_override_required?(node, architecture)
 
         if disable_redirection
           original_redirection_state = disable_wow64_file_redirection(node)
-        end
-
-        command = build_command(script)
-
-        if options
-          cmd = shell_out(command, options)
-        else
-          cmd = shell_out(command)
-        end
-
-        if disable_redirection
+          ret = block.call
           restore_wow64_file_redirection(node, original_redirection_state)
+        else
+          ret = block.call
         end
 
-        cmd
+        ret
       end
 
-      def build_command(script)
+      def build_powershell_command(script)
         flags = [
           # Hides the copyright banner at startup.
           "-NoLogo",
