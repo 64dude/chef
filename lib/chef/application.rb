@@ -28,6 +28,7 @@ require 'chef/platform'
 require 'mixlib/cli'
 require 'tmpdir'
 require 'rbconfig'
+require 'ruby-prof'
 
 class Chef
   class Application
@@ -57,7 +58,7 @@ class Chef
       setup_signal_handlers
       reconfigure
       setup_application
-      run_application
+      with_profiling { run_application }
     end
 
     def setup_signal_handlers
@@ -385,6 +386,36 @@ class Chef
       if Chef::Config[:chef_gem_compile_time]
         Chef::Log.deprecation "setting chef_gem_compile_time to true is deprecated"
       end
+    end
+
+    def with_profiling(&block)
+      if config[:profile] || Chef::Config[:profile]
+        RubyProf.measure_mode = profile_measure_mode
+        res = RubyProf.profile { block.call }
+        printer = profile_printer.new(res)
+        printer.print(profile_out)
+      else
+        block.call
+      end
+    end
+
+    def profile_measure_mode
+      mode = config[:profile_measure_mode] || Chef::Config[:profile_measure_mode]
+      RubyProf.const_get("RubyProf::#{mode.upcase}")
+    end
+
+    def profile_printer
+      printer = config[:profile_printer] || Chef::Config[:profile_printer]
+      printer = printer.split('_').map { |c| c.capitalize }.join
+      RubyProf.const_get("RubyProf::#{printer}")
+    end
+
+    def profile_out
+      if file = config[:profile_outfile] || Chef::Config[:profile_outfile]
+        io = File.open(file, 'w+')
+      end
+
+      io ||= $stdout
     end
 
     class << self
